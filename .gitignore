@@ -3,6 +3,7 @@
 
 # Token and privates
 authsec
+FirebaseConf.cs
 
 # User-specific files
 *.suo

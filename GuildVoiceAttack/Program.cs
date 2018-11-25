@@ -13,12 +13,8 @@ namespace GuildVoiceAttack
     class Program
     {
         public static dynamic prox = null;
-        private static String authSec = System.IO.File.ReadAllText(@"C:\Users\Public\TestFolder\WriteText.txt").Replace("\n", "");
-        public static IFirebaseConfig config = new FirebaseConfig
-        {
-            AuthSecret = authSec,
-            BasePath = "https://risen-59032.firebaseio.com/"
-        };
+        // private static String authSec = System.IO.File.ReadAllText(@"C:\Users\Public\TestFolder\WriteText.txt").Replace("\n", "");
+        public static IFirebaseConfig config = FirebaseConf.buildFirebase();
 
         private static IFirebaseClient client;
 
@@ -190,6 +186,8 @@ namespace GuildVoiceAttack
             {
 
             }
+
+            vaProxy.WriteToLog("testaaaaaaaaaaa", "orange");
 
             short? testShort = vaProxy.GetSmallInt("someValueIWantToClear");  //note that we are using short? (nullable short) in case the value is null
             if (testShort.HasValue)
