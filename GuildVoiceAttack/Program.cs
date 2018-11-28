@@ -18,7 +18,7 @@ namespace GuildVoiceAttack
 
         private static IFirebaseClient client;
 
-        private static async Task foo()
+        private static async Task firebaseInit()
         {
             client = new FireSharp.FirebaseClient(config);
             if (client == null) return;
@@ -32,9 +32,6 @@ namespace GuildVoiceAttack
                 changed: (s, args, d) =>
                 {
                     if (args.Path.Equals("/FinishMission") && args.Data.Equals("True")) finishMission();
-
-                    Console.WriteLine("Changed: " + args.Data);
-                    Console.WriteLine("Changed2: " + args.Path);
                     if (prox == null) return;
                     prox.WriteToLog(args.OldData + " Changed to " + args.Data + " on path " + args.Path, "purple");
                 },
@@ -43,14 +40,12 @@ namespace GuildVoiceAttack
                     Console.WriteLine("Removed: " + args);
                 });
 
-            Console.WriteLine("Connection Established");
-
-            var data = new Data
-            {
-                name = "Jake",
-                age = "22",
-                sex = "M"
-            };
+            //var data = new Data
+            //{
+            //    name = "Jake",
+            //    age = "22",
+            //    sex = "M"
+            //};
             //SetResponse response = await client.SetAsync("Information/" + data.name, data);
 
             //Data result = response.ResultAs<Data>();
@@ -59,12 +54,12 @@ namespace GuildVoiceAttack
             //bar();
         }
 
-        private static async void bar()
+        private static async void checkExistingCommands()
         {
-            FirebaseResponse response = await client.GetAsync("Information/Jake");
-            Data obj = response.ResultAs<Data>();
+            FirebaseResponse response = await client.GetAsync("Guild/BotCommands/FinishMission");
+            bool needToFinishMission = response.ResultAs<bool>();
 
-            Console.WriteLine("Object retrieved as sex: " + obj.sex);
+            if (needToFinishMission) finishMission();
         }
 
         private static async void finishMission()
@@ -105,7 +100,7 @@ namespace GuildVoiceAttack
 
 
         //note that in this version of the plugin interface, there is only a single dynamic parameter.  All the functionality of the previous parameters can be found in vaProxy
-        public static void VA_Init1(dynamic vaProxy)
+        public static async void VA_Init1(dynamic vaProxy)
         {
             //this is where you can set up whatever session information that you want.  this will only be called once on voiceattack load, and it is called asynchronously.
             //the SessionState property is a local copy of the state held on to by VoiceAttack.  In this case, the state will be a dictionary with zero items.  You can add as many items to hold on to as you want.
@@ -132,9 +127,8 @@ namespace GuildVoiceAttack
 
             prox = vaProxy;
 
-            foo();
-
-            
+            await firebaseInit();
+            checkExistingCommands();
         }
 
         public static void VA_Exit1(dynamic vaProxy)
