@@ -128,14 +128,16 @@ namespace GuildVoiceAttack
             prox = vaProxy;
 
             await firebaseInit();
+            SetResponse response = await client.SetAsync("Guild/BotCommands/Online", true);
             checkExistingCommands();
         }
 
-        public static void VA_Exit1(dynamic vaProxy)
+        public static async void VA_Exit1(dynamic vaProxy)
         {
             //this function gets called when VoiceAttack is closing (normally).  You would put your cleanup code in here, but be aware that your code must be robust enough to not absolutely depend on this function being called
             if (vaProxy.SessionState.ContainsKey("myStateValue"))  //the sessionstate property is a dictionary of (string, object)
             {
+                SetResponse response = await client.SetAsync("Guild/BotCommands/Online", false);
                 //do some kind of file cleanup or whatever at this point
             }
         }
