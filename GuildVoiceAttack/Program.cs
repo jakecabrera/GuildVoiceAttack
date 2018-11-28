@@ -73,7 +73,7 @@ namespace GuildVoiceAttack
             prox.WriteToLog("Finishing mission...", "orange");
             prox.ExecuteCommand("Finish mission");
 
-            SetResponse response = await client.SetAsync("Guild/BotCommands/FinishMission", false);
+            //SetResponse response = await client.SetAsync("Guild/BotCommands/FinishMission", false);
         }
 
         //NOTE THAT THIS IS A SAMPLE CLASS AND IS NOT FOR ANY MEANINGFUL USE.
@@ -146,8 +146,9 @@ namespace GuildVoiceAttack
             }
         }
 
-        public static void VA_Invoke1(dynamic vaProxy)
+        public static async void VA_Invoke1(dynamic vaProxy)
         {
+            vaProxy.WriteToLog("Invoked", "blue");
             //This function is where you will do all of your work.  When VoiceAttack encounters an, 'Execute External Plugin Function' action, the plugin indicated will be called.
             //in previous versions, you were presented with a long list of parameters you could use.  The parameters have been consolidated in to one dynamic, 'vaProxy' parameter.
 
@@ -187,12 +188,20 @@ namespace GuildVoiceAttack
 
             }
 
-            vaProxy.WriteToLog("testaaaaaaaaaaa", "orange");
-
             short? testShort = vaProxy.GetSmallInt("someValueIWantToClear");  //note that we are using short? (nullable short) in case the value is null
             if (testShort.HasValue)
             {
                 vaProxy.SetSmallInt("someValueIWantToClear", null);  //setting the value to null tells VoiceAttack that you want the variable removed
+            }
+
+            bool finishedMission = vaProxy.GetBoolean("finishedMission");
+            if (finishedMission)
+            {
+                if (client != null)
+                {
+                    vaProxy.WriteToLog("Finished the mission successfully.", "green");
+                    SetResponse response = await client.SetAsync("Guild/BotCommands/FinishMission", false);
+                } 
             }
 
             //here we check the context to see if we should perform an action (with some additional examples of what can be done with vaProxy
