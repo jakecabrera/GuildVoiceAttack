@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 using FireSharp.Config;
@@ -13,6 +14,10 @@ namespace GuildVoiceAttack
     class Program
     {
         public static dynamic prox = null;
+        private static EventStreamResponse listener = null;
+        private static System.Timers.Timer timer = null;
+        private static bool shouldBeOnline = true;
+
         // private static String authSec = System.IO.File.ReadAllText(@"C:\Users\Public\TestFolder\WriteText.txt").Replace("\n", "");
         public static IFirebaseConfig config = FirebaseConf.buildFirebase();
 
@@ -20,11 +25,19 @@ namespace GuildVoiceAttack
 
         private static async Task firebaseInit()
         {
-            client = new FireSharp.FirebaseClient(config);
-            if (client == null) return;
+            if (client == null)
+            {
+                client = new FireSharp.FirebaseClient(config);
+                prox.WriteToLog("Connected client", "blue");
+            }
+            if (listener != null)
+            {
+                listener.Dispose();
+                prox.WriteToLog("Disposed of old connection", "blue");
+            }
             prox.WriteToLog("Connection Established", "orange");
 
-            await client.OnAsync("Guild/BotCommands/",
+            listener = await client.OnAsync("Guild/BotCommands/",
                 added: (s, args, d) =>
                 {
                     Console.WriteLine("Added: " + args);
@@ -39,6 +52,14 @@ namespace GuildVoiceAttack
                 {
                     Console.WriteLine("Removed: " + args);
                 });
+
+            await client.SetAsync("Guild/BotCommands/Online", shouldBeOnline);
+            if (shouldBeOnline) prox.WriteToLog("Firebase connection online", "green");
+            else prox.WriteToLog("Firebase connection offline", "red");
+
+            TimeSpan periodTimeSpan = TimeSpan.FromMinutes(10);
+            await Task.Delay(periodTimeSpan);
+            await firebaseInit();
 
             //var data = new Data
             //{
@@ -62,7 +83,7 @@ namespace GuildVoiceAttack
             if (needToFinishMission) finishMission();
         }
 
-        private static async void finishMission()
+        private static void finishMission()
         {
             if (prox == null) return;
             prox.WriteToLog("Finishing mission...", "orange");
@@ -77,7 +98,7 @@ namespace GuildVoiceAttack
 
         public static string VA_DisplayName()
         {
-            return "Discord bot - v0.5";  //this is what you will want displayed in dropdowns as well as in the log file to indicate the name of your plugin
+            return "Discord bot - v0.6";  //this is what you will want displayed in dropdowns as well as in the log file to indicate the name of your plugin
         }
 
         public static string VA_DisplayInfo()
@@ -128,7 +149,6 @@ namespace GuildVoiceAttack
             prox = vaProxy;
 
             await firebaseInit();
-            SetResponse response = await client.SetAsync("Guild/BotCommands/Online", true);
             checkExistingCommands();
         }
 
@@ -137,14 +157,17 @@ namespace GuildVoiceAttack
             //this function gets called when VoiceAttack is closing (normally).  You would put your cleanup code in here, but be aware that your code must be robust enough to not absolutely depend on this function being called
             if (vaProxy.SessionState.ContainsKey("myStateValue"))  //the sessionstate property is a dictionary of (string, object)
             {
-                SetResponse response = await client.SetAsync("Guild/BotCommands/Online", false);
                 //do some kind of file cleanup or whatever at this point
             }
+
+            SetResponse response = await client.SetAsync("Guild/BotCommands/Online", false);
         }
 
         public static async void VA_Invoke1(dynamic vaProxy)
         {
             vaProxy.WriteToLog("Invoked", "blue");
+            int counter = 0;
+
             //This function is where you will do all of your work.  When VoiceAttack encounters an, 'Execute External Plugin Function' action, the plugin indicated will be called.
             //in previous versions, you were presented with a long list of parameters you could use.  The parameters have been consolidated in to one dynamic, 'vaProxy' parameter.
 
@@ -171,33 +194,32 @@ namespace GuildVoiceAttack
             //if the, 'Execute External Plugin Function' command action has the, 'wait for return' flag set, VoiceAttack will wait until this function completes so that you may check condition values and
             //have VoiceAttack react accordingly.  otherwise, VoiceAttack fires and forgets and doesn't hang out for extra processing.
 
-
-            //below is just some sample code showing how to work with vaProxy.  There's more in the VoiceAttack help documentation that is installed with VoiceAttack (VoiceAttackHelp.pdf).
-
-            if (vaProxy.GetText("myCSharpTestValue") != null) //was the text value passed set?
-            {
-
-            }
-
-            else //value has not been set.  set it here
-            {
-
-            }
-
             short? testShort = vaProxy.GetSmallInt("someValueIWantToClear");  //note that we are using short? (nullable short) in case the value is null
             if (testShort.HasValue)
             {
                 vaProxy.SetSmallInt("someValueIWantToClear", null);  //setting the value to null tells VoiceAttack that you want the variable removed
             }
 
-            bool finishedMission = vaProxy.GetBoolean("finishedMission");
-            if (finishedMission)
+            bool? finishedMission = vaProxy.GetBoolean("finishedMission");
+            if (finishedMission != null && finishedMission.Value)
             {
                 if (client != null)
                 {
                     vaProxy.WriteToLog("Finished the mission successfully.", "green");
+                    vaProxy.SetBoolean("finishedMission", false);
                     SetResponse response = await client.SetAsync("Guild/BotCommands/FinishMission", false);
                 } 
+            }
+
+            bool? toggleState = vaProxy.GetBoolean("toggleState");
+            if (toggleState.HasValue && toggleState.Value)
+            {
+                FirebaseResponse response = await client.GetAsync("Guild/BotCommands/Online");
+                vaProxy.WriteToLog("Current State is " + response.ResultAs<bool>(), "green");
+                shouldBeOnline = !response.ResultAs<bool>();
+                SetResponse setResponse = await client.SetAsync("Guild/BotCommands/Online", shouldBeOnline);
+
+                vaProxy.SetBoolean("toggleState", false);
             }
 
             //here we check the context to see if we should perform an action (with some additional examples of what can be done with vaProxy
